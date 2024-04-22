@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Supporting resources for Insurance Agent powered by Agents and Knowledge base for Amazon Bedrock"
+Metadata:
+  LICENSE: >-
+    Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this
+    software and associated documentation files (the "Software"), to deal in the Software
+    without restriction, including without limitation the rights to use, copy, modify,
+    merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY FDP, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Code Asset S3 Bucket, Lambda Deployment Package Keys, and Lambda Layer ARNs
+        Parameters:
+          - ArtifactBucket
+          - DataLoaderKey
+          - CreatefdpKey
+          - GatherDocumentKey
+          - SendReminderKey
+          - BedrockAgentsLayerArn
+          - CfnresponseLayerArn
+      - Label:
+          default: SNS Configuration Settings
+        Parameters:
+          - SNSEmail
+      - Label:
+          default: Customer Website Configuration
+        Parameters:
+          - DocumentUploadUrl
+    ParameterLabels:
+      ArtifactBucket:
+        default: your-code-assets-bucket-name
+      DataLoaderKey:
+        default: /agent/lambda/data-loader/loader_deployment_package.zip
+      CreatefdpKey:
+        default: /agent/lambda/action-groups/create_fdp.zip
+      GatherDocumentKey:
+        default: /agent/lambda/action-groups/gather_document.zip
+      SendReminderKey:
+        default: /agent/lambda/action-groups/send_reminder.zip
+      BedrockAgentsLayerArn:
+        default: bedrock-layer-arn
+      CfnresponseLayerArn:
+        default: cfnresponse-layer-arn
+      SNSEmail:
+        default: your-sns-email
+      DocumentUploadUrl:
+        default: your-document-upload-url
+
+Parameters:
+  ArtifactBucket:
+    Description: S3 Bucket Containing Code Assets for Data Loader and Agent Action Group Lambda Functions
+    Type: String
+    Default: your-code-assets-bucket-name
+  DataLoaderKey:
+    Description: S3 Key for Data Loader
+    Type: String
+    Default: /agent/lambda/data-loader/loader_deployment_package.zip
+  CreatefdpKey:
+    Description: S3 Key for create fdp function code
+    Type: String
+    Default: /agent/lambda/action-groups/create_fdp.zip
+  GatherDocumentKey:
+    Description: S3 Key for gather document function code
+    Type: String
+    Default: /agent/lambda/action-groups/gather_document.zip
+  SendReminderKey:
+    Description: S3 Key for send reminder function code
+    Type: String
+    Default: /agent/lambda/action-groups/send_reminder.zip
+  BedrockAgentsLayerArn:
+    Description: Agents for Bedrock Lambda Layer
+    Type: String
+    Default: bedrock-layer-arn
+  CfnresponseLayerArn:
+    Description: Agents for Bedrock Lambda Layer
+    Type: String
+    Default: cfnresponse-layer-arn
+  SNSEmail:
+    Description: SNS Email.
+    Type: String
+    Default: your-sns-email
+  DocumentUploadUrl:
+    Description: Customer Document Upload Website URL
+    Type: String
+    Default: your-document-upload-url
+
+Resources:
+  ExistingfdpsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-Existingfdps
+      AttributeDefinitions:
+        - AttributeName: fdpId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: fdpId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '3'
+        WriteCapacityUnits: '3'
+      SSESpecification:
+        SSEEnabled: True
+
+  AgentActionGroupLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-AgentActionGroupLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Join 
+          - ''
+          - - 'arn:'
+            - !Ref 'AWS::Partition'
+            - ':iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+  AgentActionGroupLambdaRoleDefaultPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-AgentActionGroupLambdaRoleDefaultPolicy
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+              - lambda:Get*
+              - lambda:InvokeFunction
+              - bedrock:InvokeModel
+              - sns:Publish
+              - s3:GetObject
+              - s3:PutObject
+            Effect: Allow
+            Resource: '*'        
+        Version: 2012-10-17
+      Roles:
+        - !Ref AgentActionGroupLambdaRole
+
+  BedrockCreatefdpFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref CreatefdpFunction
+      Principal: 'bedrock.amazonaws.com'
+
+  BedrockSendReminderFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref SendReminderFunction
+      Principal: 'bedrock.amazonaws.com'
+
+  BedrockGatherDocumentFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref GatherDocumentFunction
+      Principal: 'bedrock.amazonaws.com'
+
+  DataLoaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Lambda function to initially load fdps catalog.
+      FunctionName: !Sub ${AWS::StackName}-DDBDataLoader
+      Code: 
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref DataLoaderKey
+      Runtime: python3.11
+      MemorySize: 256
+      Timeout: 20
+      Handler: index.lambda_handler
+      Layers:
+        - !Ref CfnresponseLayerArn
+      Role: !GetAtt AgentActionGroupLambdaRole.Arn
+      Environment:
+        Variables:
+          EXISTING_FDPS_TABLE_NAME: !Ref ExistingfdpsTable
+
+  LoadPlanData:
+    Type: Custom::LoadDynamoDB
+    Properties:
+      ServiceToken: !GetAtt DataLoaderFunction.Arn
+
+  CreatefdpFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Bedrock Insurance agent create fdp function
+      FunctionName: !Sub ${AWS::StackName}-CreatefdpFunction
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref CreatefdpKey
+      Runtime: python3.11
+      MemorySize: 512
+      Timeout: 30
+      Handler: create_fdp.lambda_handler
+      Layers:
+        - !Ref BedrockAgentsLayerArn
+      Role: !GetAtt AgentActionGroupLambdaRole.Arn
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          CUSTOMER_WEBSITE_URL: !Ref DocumentUploadUrl
+          EXISTING_FDPS_TABLE_NAME: !Ref ExistingfdpsTable
+          SNS_TOPIC_ARN: !Ref SNSTopic
+
+  SendReminderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Bedrock Insurance agent send reminder function
+      FunctionName: !Sub ${AWS::StackName}-SendReminderFunction
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref SendReminderKey
+      Runtime: python3.11
+      MemorySize: 512
+      Timeout: 30
+      Handler: send_reminder.lambda_handler
+      Layers:
+        - !Ref BedrockAgentsLayerArn
+      Role: !GetAtt AgentActionGroupLambdaRole.Arn
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          EXISTING_FDPS_TABLE_NAME: !Ref ExistingfdpsTable
+          SNS_TOPIC_ARN: !Ref SNSTopic
+
+  GatherDocumentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Bedrock Insurance agent gather document function.
+      FunctionName: !Sub ${AWS::StackName}-GatherDocumentFunction
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref GatherDocumentKey
+      Runtime: python3.11
+      MemorySize: 512
+      Timeout: 30
+      Handler: gather_document.lambda_handler
+      Layers:
+        - !Ref BedrockAgentsLayerArn
+      Role: !GetAtt AgentActionGroupLambdaRole.Arn
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          CUSTOMER_WEBSITE_URL: !Ref DocumentUploadUrl
+          SNS_TOPIC_ARN: !Ref SNSTopic
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties: 
+      Endpoint: !Ref SNSEmail
+      Protocol: email
+      TopicArn: !Ref SNSTopic
