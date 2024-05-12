@@ -12,7 +12,7 @@ import requests
 # DynamoDB boto3 clients and variables
 dynamodb = boto3.resource('dynamodb',region_name=os.environ['AWS_REGION'])
 dynamodb_client = boto3.client('dynamodb')
-existing_claims_table_name = os.environ['EXISTING_CLAIMS_TABLE_NAME']
+existing_packages_table_name = os.environ['EXISTING_PACKAGES_TABLE_NAME']
 
 # SNS boto3 clients and variables
 sns_topic_arn = os.environ['SNS_TOPIC_ARN']
@@ -24,11 +24,11 @@ def get_named_parameter(event, name):
 def get_named_property(event, name):
     return next(item for item in event['requestBody']['content']['application/json']['properties'] if item['name'] == name)['value']
 
-def open_claims():
-    print("Finding Open Claims")
+def open_packages():
+    print("Finding Open Packages")
 
     response = dynamodb_client.scan(
-        TableName=existing_claims_table_name,
+        TableName=existing_packages_table_name,
         FilterExpression='#s = :s',
         ExpressionAttributeNames={'#s': 'status'},
         ExpressionAttributeValues={
@@ -37,10 +37,10 @@ def open_claims():
     )
 
     items = response.get('Items', [])
-    # Extracting the 'claimId' attribute for items with 'status' equal to 'Open'
-    open_claim_ids = [item['claimId']['S'] for item in items if 'claimId' in item]
+    # Extracting the 'packageId' attribute for items with 'status' equal to 'Open'
+    open_package_ids = [item['packageId']['S'] for item in items if 'packageId' in item]
 
-    return open_claim_ids
+    return open_package_ids
 
 def generate_reminder_id(length):
     print("Generate Reminder ID")
@@ -52,10 +52,10 @@ def generate_reminder_id(length):
     
     return random_string
 
-def send_reminder(claim_id, pending_documents):
+def send_reminder(package_id, pending_documents):
     print("Send Reminder")
 
-    subject = "Insurance Claim ID: " + str(claim_id)
+    subject = "Field Design Package ID: " + str(package_id)
     message = "Here is a reminder to upload your pending documents: " + str(pending_documents)
     print("Email Message: " + message)
 
@@ -75,28 +75,28 @@ def send_reminder(claim_id, pending_documents):
 def notify_pending_documents(event):
     print("Notify Pending Documents")
     
-    # Extracting claimId value from event parameters
-    claim_id = get_named_parameter(event, 'claimId')
-    '''claim_id = None
+    # Extracting packageId value from event parameters
+    package_id = get_named_parameter(event, 'packageId')
+    '''package_id = None
     for param in event.get('parameters', []):
-        if param.get('name') == 'claimId': 
-            claim_id = param.get('value')
+        if param.get('name') == 'packageId': 
+            package_id = param.get('value')
             break'''
 
-    print("Claim ID: " + str(claim_id))
+    print("Package ID: " + str(package_id))
 
-    if not claim_id:
+    if not package_id:
         return {
             'statusCode': 400,
-            'response': 'Missing claimId parameter'
+            'response': 'Missing packageId parameter'
         }
 
     try:
         # Define the query parameters
         response = dynamodb_client.get_item(
-            TableName=existing_claims_table_name,
+            TableName=existing_packages_table_name,
             Key={
-                'claimId': {'S': claim_id}
+                'packageId': {'S': package_id}
             },
             ProjectionExpression='pendingDocuments'  # Retrieve only the 'pendingDocuments' attribute
         )
@@ -115,7 +115,7 @@ def notify_pending_documents(event):
         return []
 
     # Generate a random string of length 7 (to match the format '12a3456')
-    reminder_tracking_id = send_reminder(claim_id, formatted_pending_documents)
+    reminder_tracking_id = send_reminder(package_id, formatted_pending_documents)
     print("Reminder tracking ID = " + str(reminder_tracking_id))
 
     return {
@@ -131,9 +131,9 @@ def lambda_handler(event, context):
     action_group = event['actionGroup']
     api_path = event['apiPath']
 
-    if api_path == '/open-claims':
-        body = open_claims() 
-    elif api_path == '/claims/{claimId}/notify-pending-documents':
+    if api_path == '/open-packages':
+        body = open_packages() 
+    elif api_path == '/packages/{packageId}/notify-pending-documents':
         body = notify_pending_documents(event)
     else:
         response_code = 400
