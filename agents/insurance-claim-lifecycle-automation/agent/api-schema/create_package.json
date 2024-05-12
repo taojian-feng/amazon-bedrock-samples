@@ -1,0 +1,49 @@
+{"openapi": "3.0.0",
+    "info": {
+        "title": "Create Field_design package Automation API",
+        "version": "1.0.0",
+        "description": "API for creating new Field_design package for a specific line No.."
+    },
+    "paths": {
+        "/create-package": {
+            "post": {
+                "summary": "Create a new Oil Gas pipeline Field_design package",
+                "description": "Create a new a new Oil Gas pipeline Field_design package, then update the database with the new package. Return the newly created package's packageId and list of pending documents in comma-separated plaintext.",
+                "operationId": "createpackage",
+                "responses": {
+                    "200": {
+                        "description": "Creates an Field_design package for line No.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "packageId": {
+                                            "type": "string",
+                                            "description": "Unique ID of the package."
+                                        },
+                                        "policyId": {
+                                            "type": "string",
+                                            "description": "Unique ID of the line No. who has filed the package."
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "description": "The status of the package. package can be in Open or Closed state."
+                                        },
+                                        "pendingDocuments": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "List of pending documents required for the package."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

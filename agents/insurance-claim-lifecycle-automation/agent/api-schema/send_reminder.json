@@ -1,18 +1,18 @@
 {"openapi": "3.0.0",
     "info": {
-        "title": "Insurance Claim Status and Reminder API",
+        "title": "Field Design package Status and Reminder API",
         "version": "1.0.0",
-        "description": "APIs for identifying insurance claim status and sending reminders for claims data that still needs to be collected"
+        "description": "APIs for identifying field Ddesign package status and sending reminders for packages data that still needs to be collected"
     },
     "paths": {
-        "/open-claims": {
+        "/open-packages": {
             "get": {
-                "summary": "Get a list of all open claims",
-                "description": "Get the list of all open insurance claims. Return a list of all the open claimIds in comma-separated plaintext.",
-                "operationId": "getAllOpenClaims",
+                "summary": "Get a list of all open packages",
+                "description": "Get the list of all open field Ddesign packages. Return a list of all the open packageIds in comma-separated plaintext.",
+                "operationId": "getAllOpenpackages",
                 "responses": {
                     "200": {
-                        "description": "Gets the list of all open insurance claims for policy holders",
+                        "description": "Gets the list of all open field Ddesign packages for line no.s",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -20,17 +20,17 @@
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "claimId": {
+                                            "packageId": {
                                                 "type": "string",
-                                                "description": "Unique ID of the claim."
+                                                "description": "Unique ID of the package."
                                             },
-                                            "policyId": {
+                                            "lineId": {
                                                 "type": "string",
-                                                "description": "Unique ID of the policy holder who has filed the claim."
+                                                "description": "Unique ID of the line no. filed the package."
                                             },
-                                            "claimStatus": {
+                                            "packageStatus": {
                                                 "type": "string",
-                                                "description": "The status of the claim. Claim can be in Open or Closed state"
+                                                "description": "The status of the package. package can be in Open or Closed state"
                                             }
                                         }
                                     }
@@ -41,15 +41,15 @@
                 }
             }
         },
-        "/claims/{claimId}/notify-pending-documents": {
+        "/packages/{packageId}/notify-pending-documents": {
             "post": {
-                "summary": "Identify pending documents for a specific claim and send reminder to policy holder",
-                "description": "Get the list of pending documents that need to be uploaded to the claim and notify the policy holder. This function can be called multiple times with different claimIds as the input parameter. Return the list of comma-separated plaintext pending documents and the reminder tracking ID and status in plaintext.",
+                "summary": "Identify pending documents for a specific package and send reminder to line no.",
+                "description": "Get the list of pending documents that need to be uploaded to the package and notify the line no.. This function can be called multiple times with different packageIds as the input parameter. Return the list of comma-separated plaintext pending documents and the reminder tracking ID and status in plaintext.",
                 "operationId": "notifyPendingDocuments",
                 "parameters": [{
-                    "name": "claimId",
+                    "name": "packageId",
                     "in": "path",
-                    "description": "Unique ID of the open insurance claim",
+                    "description": "Unique ID of the open field Ddesign package",
                     "required": true,
                     "schema": {
                       "type": "string"
@@ -57,7 +57,7 @@
                 }],
                 "responses": {
                     "200": {
-                        "description": "List of documents that are pending to be uploaded by the policy holder for an insurance claim",
+                        "description": "List of documents that are pending to be uploaded by the line no. for an field Ddesign package",
                         "content": {
                             "application/json": {
                                 "schema": {
