@@ -7,7 +7,7 @@ import cfnresponse
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-EXISTING_CLAIMS_TABLE_NAME = os.environ.get('EXISTING_CLAIMS_TABLE_NAME')
+EXISTING_PACKAGES_TABLE_NAME = os.environ.get('EXISTING_PACKAGES_TABLE_NAME')
 REGION = os.environ.get('AWS_REGION')
 
 dynamodb = boto3.client('dynamodb', region_name=REGION)
@@ -18,13 +18,13 @@ def lambda_handler(event, context):
     request_type = event.get('RequestType')
     if request_type == 'Create' or request_type == 'Update':
         try:
-            with open('claims.json', 'r') as file:
-                claims_data = json.load(file)
+            with open('packages.json', 'r') as file:
+                packages_data = json.load(file)
             
             items = []
-            for claim in claims_data:
+            for package in packages_data:
                 item = {}
-                for key, value in claim.items():
+                for key, value in package.items():
                     if value:
                         if isinstance(value, dict):
                             nested_attributes = {}
@@ -42,7 +42,7 @@ def lambda_handler(event, context):
             
             response = dynamodb.batch_write_item(
                 RequestItems={
-                    EXISTING_CLAIMS_TABLE_NAME: items
+                    EXISTING_PACKAGES_TABLE_NAME: items
                 }
             )
             logger.info("Batch write response: %s", json.dumps(response))
