@@ -6,7 +6,7 @@
     "packageDatetime": "2024-05-08 15:21:00",
     "incident": {
       "date": "05-08-2024",
-      "hour":1000
+      "hour":1000 ,
       "type": "Corrosion",
       "severity": "Grade F"
     },
