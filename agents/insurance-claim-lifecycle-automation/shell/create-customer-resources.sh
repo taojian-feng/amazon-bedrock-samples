@@ -7,12 +7,17 @@
 # export AWS_REGION=<YOUR-STACK-REGION> # Stack deployment region
 # source ./create-customer-resources.sh
 
+export STACK_NAME=stack-85004920141760
+export SNS_EMAIL=taojfeng@amzon.com
+export DOCUMENT_UPLOAD_URL=https://cfd-850049201417.s3.amazonaws.com/documents/
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+export AWS_REGION=$(aws configure get region)
 export ARTIFACT_BUCKET_NAME=$STACK_NAME-customer-resources
 export DATA_LOADER_KEY="agent/lambda/data-loader/loader_deployment_package.zip"
-export CREATE_CLAIM_KEY="agent/lambda/action-groups/create_claim.zip"
-export GATHER_EVIDENCE_KEY="agent/lambda/action-groups/gather_evidence.zip"
+export CREATE_PACKAGE_KEY="agent/lambda/action-groups/create_package.zip"
+export GATHER_DOCUMENT_KEY="agent/lambda/action-groups/gather_document.zip"
 export SEND_REMINDER_KEY="agent/lambda/action-groups/send_reminder.zip"
+
 
 aws s3 mb s3://${ARTIFACT_BUCKET_NAME} --region ${AWS_REGION}
 aws s3 cp ../agent/ s3://${ARTIFACT_BUCKET_NAME}/agent/ --region ${AWS_REGION} --recursive --exclude ".DS_Store"
@@ -41,13 +46,13 @@ aws cloudformation create-stack \
 --parameters \
 ParameterKey=ArtifactBucket,ParameterValue=${ARTIFACT_BUCKET_NAME} \
 ParameterKey=DataLoaderKey,ParameterValue=${DATA_LOADER_KEY} \
-ParameterKey=CreateClaimKey,ParameterValue=${CREATE_CLAIM_KEY} \
-ParameterKey=GatherEvidenceKey,ParameterValue=${GATHER_EVIDENCE_KEY} \
+ParameterKey=CreatePackageKey,ParameterValue=${CREATE_PACKAGE_KEY} \
+ParameterKey=GatherDocumentKey,ParameterValue=${GATHER_DOCUMENT_KEY} \
 ParameterKey=SendReminderKey,ParameterValue=${SEND_REMINDER_KEY} \
 ParameterKey=BedrockAgentsLayerArn,ParameterValue=${BEDROCK_AGENTS_LAYER_ARN} \
 ParameterKey=CfnresponseLayerArn,ParameterValue=${CFNRESPONSE_LAYER_ARN} \
 ParameterKey=SNSEmail,ParameterValue=${SNS_EMAIL} \
-ParameterKey=EvidenceUploadUrl,ParameterValue=${EVIDENCE_UPLOAD_URL} \
+ParameterKey=DocumentUploadUrl,ParameterValue=${DOCUMENT_UPLOAD_URL} \
 --capabilities CAPABILITY_NAMED_IAM \
 --region ${AWS_REGION}
 
